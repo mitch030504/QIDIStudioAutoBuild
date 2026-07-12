@@ -123,9 +123,15 @@ endif (MINGW)
 
 if (NOT WIN32 AND NOT APPLE)
     # Binary name on unix like systems (Linux, Unix)
-    set_target_properties(QIDIStudio PROPERTIES OUTPUT_NAME "qidi-studio")
+    set_target_properties(QIDIStudio PROPERTIES OUTPUT_NAME "qidi-studio-bin")
     set(SLIC3R_APP_CMD "qidi-studio")
     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/platform/unix/BuildLinuxImage.sh.in ${CMAKE_CURRENT_BINARY_DIR}/BuildLinuxImage.sh @ONLY)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/platform/unix/qidi-studio.sh.in ${CMAKE_CURRENT_BINARY_DIR}/qidi-studio @ONLY)
+    add_custom_command(TARGET QIDIStudio POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/qidi-studio "$<TARGET_FILE_DIR:QIDIStudio>/qidi-studio"
+        COMMAND chmod +x "$<TARGET_FILE_DIR:QIDIStudio>/qidi-studio"
+        WORKING_DIRECTORY "$<TARGET_FILE_DIR:QIDIStudio>"
+        VERBATIM)
 endif ()
 
 target_link_libraries(QIDIStudio libslic3r cereal)
@@ -312,4 +318,5 @@ else ()
         install(FILES ${output_sos_${build_type}} DESTINATION "${CMAKE_INSTALL_PREFIX}")
     endif()
     install(TARGETS QIDIStudio RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/qidi-studio DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif ()

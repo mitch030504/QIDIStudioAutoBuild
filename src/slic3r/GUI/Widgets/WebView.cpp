@@ -397,29 +397,16 @@ bool WebView::RunScript(wxWebView *webView, wxString const &javascript)
         return true;
 #else
         WebKitWebView *wkWebView = (WebKitWebView *) webView->GetNativeBackend();
+        if (wkWebView == nullptr)
+            return false;
 #if defined(QDT_WEBKITGTK_4_1)
         webkit_web_view_evaluate_javascript(
             wkWebView, javascript.utf8_str(), -1, NULL, NULL, NULL,
-            [](GObject *wkWebView, GAsyncResult *res, void *) {
-                GError *error = NULL;
-                JSCValue *result = webkit_web_view_evaluate_javascript_finish((WebKitWebView*)wkWebView, res, &error);
-                if (!result) {
-                    if (error) g_error_free(error);
-                } else {
-                    g_object_unref(result);
-                }
-        }, NULL);
+            NULL, NULL);
 #else
         webkit_web_view_run_javascript(
             wkWebView, javascript.utf8_str(), NULL,
-            [](GObject *wkWebView, GAsyncResult *res, void *) {
-                GError * error = NULL;
-                auto result = webkit_web_view_run_javascript_finish((WebKitWebView*)wkWebView, res, &error);
-                if (!result)
-                    g_error_free (error);
-                else
-                    webkit_javascript_result_unref (result);
-        }, NULL);
+            NULL, NULL);
 #endif
         return true;
 #endif

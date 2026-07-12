@@ -1,0 +1,4 @@
+#!/bin/sh
+export WEBKIT_DISABLE_DMABUF_RENDERER=1
+export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
+exec "$(dirname "$0")/qidi-studio-bin" "$@"

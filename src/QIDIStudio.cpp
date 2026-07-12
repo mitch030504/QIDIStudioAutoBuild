@@ -8706,8 +8706,13 @@ extern "C" {
     }
 }
 #else /* _MSC_VER */
+#include <stdlib.h>
 int main(int argc, char **argv)
 {
+#ifdef __linux__
+    setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1", 1);
+    setenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1", 1);
+#endif
     return CLI().run(argc, argv);
 }
 #endif /* _MSC_VER */
