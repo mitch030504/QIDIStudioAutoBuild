@@ -143,6 +143,19 @@ index 356f136c..062e63ea 100644
              -DBUILD_SHARED_LIBS:BOOL=OFF
              ${_cmake_osx_arch}
              "${_configs_line}"
+diff --git a/deps/FFMPEG/FFMPEG.cmake b/deps/FFMPEG/FFMPEG.cmake
+index aa1300be..48b56fc0 100644
+--- a/deps/FFMPEG/FFMPEG.cmake
++++ b/deps/FFMPEG/FFMPEG.cmake
+@@ -57,7 +57,7 @@ else ()
+         DOWNLOAD_DIR ${DEP_DOWNLOAD_DIR}/FFMPEG
+         CONFIGURE_COMMAND ${_conf_cmd}
+             ${_cross_cmd}
+-            ${_pic_cmd}
++            --enable-pic
+             ${_arch_cmd}
+             ${_cc_cmd}
+             --prefix="${DESTDIR}/usr/local"
 diff --git a/deps/wxWidgets/wxWidgets.cmake b/deps/wxWidgets/wxWidgets.cmake
 index 1cff5c7d..fe77d52d 100644
 --- a/deps/wxWidgets/wxWidgets.cmake
