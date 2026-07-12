@@ -168,7 +168,12 @@ jobs:
         git config --system safe.directory '*'
         
         # Ensure correct directory permissions so non-root users can traverse and access the workspace
-        chmod a+rx /github /github/workspace || true
+        # Dynamically traverse up to the root and grant +rx permissions on all parent folders
+        DIR="${PWD}"
+        while [ "$DIR" != "/" ]; do
+          chmod a+rx "$DIR" || true
+          DIR="$(dirname "$DIR")"
+        done
         chmod -R a+rX .
         
         # Create non-root build user
