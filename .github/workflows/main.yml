@@ -157,24 +157,32 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Arch Linux and dependencies
+    - name: Setup Arch Linux and build environment
       run: |
         pacman-key --init
         pacman-key --populate archlinux
         pacman -Syu --noconfirm
-        pacman -S --needed --noconfirm sudo git base-devel
-        echo "root ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/root
+        pacman -S --needed --noconfirm sudo git base-devel procps-ng
+        
+        # Create non-root build user
+        useradd -m builduser
+        echo "builduser ALL=(ALL) NOPASSWD: /usr/bin/pacman" > /etc/sudoers.d/builduser
+        
+        # Change workspace ownership so builduser has write permissions
+        chown -R builduser:builduser .
 
-    - name: Build QIDI Studio on Arch
+    - name: Build QIDI Studio AUR Package
       run: |
-        export CMAKE_TLS_VERIFY=0
-        sed -i "s/-DQDT_INTERNAL_TESTING=0/-DQDT_INTERNAL_TESTING=1 -DQDT_RELEASE_TO_PUBLIC=0/" BuildLinux.sh 
-        chmod +x BuildLinux.sh
-        ./BuildLinux.sh -u
-        ./BuildLinux.sh -dsi -r
+        # Point PKGBUILD to the local git directory instead of cloning from github
+        sed -i "s|git+https://github.com/mitch030504/QIDIStudioAutoBuild.git|git+file://${PWD}|g" aur/PKGBUILD
+        # Set permissions for git safe directory for builduser
+        sudo -u builduser git config --global --add safe.directory '*'
+        cd aur
+        # Run makepkg as builduser
+        sudo -u builduser makepkg -sCc --noconfirm
 
-    - name: Upload Artifacts on Arch
+    - name: Upload AUR Package Artifact
       uses: actions/upload-artifact@v5.0.0
       with:
-        name: QIDIStudio_ArchLinux
-        path: build/QIDIStudio_ubu64.AppImage
+        name: QIDIStudio_AUR_Package
+        path: aur/*.pkg.tar.zst
