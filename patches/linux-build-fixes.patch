@@ -1,3 +1,171 @@
+diff --git a/aur/.SRCINFO b/aur/.SRCINFO
+new file mode 100644
+index 00000000..17c67b84
+--- /dev/null
++++ b/aur/.SRCINFO
+@@ -0,0 +1,32 @@
++pkgbase = qidistudio-git
++	pkgdesc = Professional 3D printer slicing software developed by QIDI Technology (built with CachyOS/Arch compatibility patches)
++	pkgver = 02.07.01.57.r16991.g4b23a908
++	pkgrel = 1
++	url = https://github.com/mitch030504/QIDIStudioAutoBuild
++	arch = x86_64
++	license = AGPL-3.0-only
++	makedepends = git
++	makedepends = cmake
++	makedepends = ninja
++	makedepends = nasm
++	makedepends = yasm
++	makedepends = extra-cmake-modules
++	depends = gtk3
++	depends = libsecret
++	depends = mesa
++	depends = glu
++	depends = webkit2gtk-4.1
++	depends = libxkbcommon
++	depends = curl
++	depends = libmspack
++	depends = eglexternalplatform
++	depends = gstreamer
++	depends = gst-plugins-base-libs
++	depends = tbb
++	provides = qidistudio
++	conflicts = qidistudio
++	conflicts = qidi-studio
++	source = git+https://github.com/mitch030504/QIDIStudioAutoBuild.git
++	sha256sums = SKIP
++
++pkgname = qidistudio-git
+diff --git a/aur/PKGBUILD b/aur/PKGBUILD
+new file mode 100644
+index 00000000..b4ca0965
+--- /dev/null
++++ b/aur/PKGBUILD
+@@ -0,0 +1,59 @@
++# Maintainer: Mitchell <mitchell@gemini.com>
++pkgname=qidistudio-git
++_pkgname=QIDIStudio
++pkgver=02.07.01.57.r16991.g4b23a908
++pkgrel=1
++pkgdesc="Professional 3D printer slicing software developed by QIDI Technology (built with CachyOS/Arch compatibility patches)"
++arch=('x86_64')
++url="https://github.com/mitch030504/QIDIStudioAutoBuild"
++license=('AGPL-3.0-only')
++depends=(
++    'gtk3'
++    'libsecret'
++    'mesa'
++    'glu'
++    'webkit2gtk-4.1'
++    'libxkbcommon'
++    'curl'
++    'libmspack'
++    'eglexternalplatform'
++    'gstreamer'
++    'gst-plugins-base-libs'
++    'tbb'
++)
++makedepends=(
++    'git'
++    'cmake'
++    'ninja'
++    'nasm'
++    'yasm'
++    'extra-cmake-modules'
++)
++provides=('qidistudio')
++conflicts=('qidistudio' 'qidi-studio')
++source=("git+https://github.com/mitch030504/QIDIStudioAutoBuild.git")
++sha256sums=('SKIP')
++
++pkgver() {
++    cd "${srcdir}/QIDIStudioAutoBuild"
++    printf "02.07.01.57.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
++}
++
++prepare() {
++    cd "${srcdir}/QIDIStudioAutoBuild"
++    # Ensure build scripts are executable
++    chmod +x BuildLinux.sh
++}
++
++build() {
++    cd "${srcdir}/QIDIStudioAutoBuild"
++    # Run BuildLinux.sh to compile deps (-d) and slic3r (-s) in release mode
++    # -r skips RAM/disk size limit checks for containers
++    ./BuildLinux.sh -ds -r
++}
++
++package() {
++    cd "${srcdir}/QIDIStudioAutoBuild"
++    # Install files to target pkgdir
++    DESTDIR="${pkgdir}" cmake --install build
++}
+diff --git a/deps/CMakeLists.txt b/deps/CMakeLists.txt
+index 356f136c..23405e6c 100644
+--- a/deps/CMakeLists.txt
++++ b/deps/CMakeLists.txt
+@@ -21,7 +21,7 @@
+ #
+ 
+ project(QIDIStudio-deps)
+-cmake_minimum_required(VERSION 3.2)
++cmake_minimum_required(VERSION 3.5)
+ 
+ include(ExternalProject)
+ include(ProcessorCount)
+diff --git a/linux.d/arch b/linux.d/arch
+new file mode 100644
+index 00000000..2a522afc
+--- /dev/null
++++ b/linux.d/arch
+@@ -0,0 +1,38 @@
++FOUND_GTK3=$(pacman -Qq gtk3 2>/dev/null || echo "")
++
++REQUIRED_DEV_PACKAGES=(
++    base-devel
++    cmake
++    ninja
++    git
++    wget
++    file
++    gettext
++    libsecret
++    mesa
++    glu
++    openssl
++    wayland
++    wayland-protocols
++    webkit2gtk-4.1
++    libxkbcommon
++    curl
++    nasm
++    yasm
++    extra-cmake-modules
++    libmspack
++    eglexternalplatform
++    gstreamer
++    gst-plugins-base
++)
++
++if [[ -n "$UPDATE_LIB" ]]
++then
++    # Install them using pacman
++    sudo pacman -S --needed --noconfirm ${REQUIRED_DEV_PACKAGES[@]}
++
++    echo -e "done\n"
++    exit 0
++fi
++
++FOUND_GTK3_DEV=$(pacman -Qq gtk3 2>/dev/null || echo "")
+diff --git a/linux.d/cachyos b/linux.d/cachyos
+new file mode 120000
+index 00000000..aca8da44
+--- /dev/null
++++ b/linux.d/cachyos
+@@ -0,0 +1 @@
++arch
+\ No newline at end of file
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
 index afb3bd00..f08c5c35 100644
 --- a/src/CMakeLists.txt
