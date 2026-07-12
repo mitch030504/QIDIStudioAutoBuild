@@ -164,19 +164,23 @@ jobs:
         pacman -Syu --noconfirm
         pacman -S --needed --noconfirm sudo git base-devel procps-ng
         
+        # Configure git system-wide to trust all directories
+        git config --system safe.directory '*'
+        
         # Create non-root build user
         useradd -m builduser
         echo "builduser ALL=(ALL) NOPASSWD: /usr/bin/pacman" > /etc/sudoers.d/builduser
         
         # Change workspace ownership so builduser has write permissions
         chown -R builduser:builduser .
+        
+        # Verify git status works for builduser
+        sudo -u builduser git status
 
     - name: Build QIDI Studio AUR Package
       run: |
         # Point PKGBUILD to the local git directory instead of cloning from github
         sed -i "s|git+https://github.com/mitch030504/QIDIStudioAutoBuild.git|git+file://${PWD}|g" aur/PKGBUILD
-        # Set permissions for git safe directory for builduser
-        sudo -u builduser git config --global --add safe.directory '*'
         cd aur
         # Run makepkg as builduser
         sudo -u builduser makepkg -sCc --noconfirm
