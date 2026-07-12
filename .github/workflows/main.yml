@@ -147,3 +147,34 @@ jobs:
       with:
         name: QIDIStudio_AppImage
         path: build/QIDIStudio_ubu64.AppImage
+
+  arch-build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Arch Linux and dependencies
+      run: |
+        pacman-key --init
+        pacman-key --populate archlinux
+        pacman -Syu --noconfirm
+        pacman -S --needed --noconfirm sudo git base-devel
+        echo "root ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/root
+
+    - name: Build QIDI Studio on Arch
+      run: |
+        export CMAKE_TLS_VERIFY=0
+        sed -i "s/-DQDT_INTERNAL_TESTING=0/-DQDT_INTERNAL_TESTING=1 -DQDT_RELEASE_TO_PUBLIC=0/" BuildLinux.sh 
+        chmod +x BuildLinux.sh
+        ./BuildLinux.sh -u
+        ./BuildLinux.sh -dsi -r
+
+    - name: Upload Artifacts on Arch
+      uses: actions/upload-artifact@v5.0.0
+      with:
+        name: QIDIStudio_ArchLinux
+        path: build/QIDIStudio_ubu64.AppImage

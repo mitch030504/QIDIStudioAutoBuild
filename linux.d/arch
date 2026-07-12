@@ -1,0 +1,38 @@
+FOUND_GTK3=$(pacman -Qq gtk3 2>/dev/null || echo "")
+
+REQUIRED_DEV_PACKAGES=(
+    base-devel
+    cmake
+    ninja
+    git
+    wget
+    file
+    gettext
+    libsecret
+    mesa
+    glu
+    openssl
+    wayland
+    wayland-protocols
+    webkit2gtk-4.1
+    libxkbcommon
+    curl
+    nasm
+    yasm
+    extra-cmake-modules
+    libmspack
+    eglexternalplatform
+    gstreamer
+    gst-plugins-base
+)
+
+if [[ -n "$UPDATE_LIB" ]]
+then
+    # Install them using pacman
+    sudo pacman -S --needed --noconfirm ${REQUIRED_DEV_PACKAGES[@]}
+
+    echo -e "done\n"
+    exit 0
+fi
+
+FOUND_GTK3_DEV=$(pacman -Qq gtk3 2>/dev/null || echo "")
