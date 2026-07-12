@@ -1,0 +1,409 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index afb3bd00..f08c5c35 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -123,9 +123,15 @@ endif (MINGW)
+ 
+ if (NOT WIN32 AND NOT APPLE)
+     # Binary name on unix like systems (Linux, Unix)
+-    set_target_properties(QIDIStudio PROPERTIES OUTPUT_NAME "qidi-studio")
++    set_target_properties(QIDIStudio PROPERTIES OUTPUT_NAME "qidi-studio-bin")
+     set(SLIC3R_APP_CMD "qidi-studio")
+     configure_file(${CMAKE_CURRENT_SOURCE_DIR}/platform/unix/BuildLinuxImage.sh.in ${CMAKE_CURRENT_BINARY_DIR}/BuildLinuxImage.sh @ONLY)
++    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/platform/unix/qidi-studio.sh.in ${CMAKE_CURRENT_BINARY_DIR}/qidi-studio @ONLY)
++    add_custom_command(TARGET QIDIStudio POST_BUILD
++        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_BINARY_DIR}/qidi-studio "$<TARGET_FILE_DIR:QIDIStudio>/qidi-studio"
++        COMMAND chmod +x "$<TARGET_FILE_DIR:QIDIStudio>/qidi-studio"
++        WORKING_DIRECTORY "$<TARGET_FILE_DIR:QIDIStudio>"
++        VERBATIM)
+ endif ()
+ 
+ target_link_libraries(QIDIStudio libslic3r cereal)
+@@ -312,4 +318,5 @@ else ()
+         install(FILES ${output_sos_${build_type}} DESTINATION "${CMAKE_INSTALL_PREFIX}")
+     endif()
+     install(TARGETS QIDIStudio RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR})
++    install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/qidi-studio DESTINATION "${CMAKE_INSTALL_BINDIR}")
+ endif ()
+diff --git a/src/QIDIStudio.cpp b/src/QIDIStudio.cpp
+index 0f37cfb9..481dc53d 100644
+--- a/src/QIDIStudio.cpp
++++ b/src/QIDIStudio.cpp
+@@ -8706,8 +8706,13 @@ extern "C" {
+     }
+ }
+ #else /* _MSC_VER */
++#include <stdlib.h>
+ int main(int argc, char **argv)
+ {
++#ifdef __linux__
++    setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1", 1);
++    setenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1", 1);
++#endif
+     return CLI().run(argc, argv);
+ }
+ #endif /* _MSC_VER */
+diff --git a/src/platform/unix/qidi-studio.sh.in b/src/platform/unix/qidi-studio.sh.in
+new file mode 100644
+index 00000000..4fe7c760
+--- /dev/null
++++ b/src/platform/unix/qidi-studio.sh.in
+@@ -0,0 +1,4 @@
++#!/bin/sh
++export WEBKIT_DISABLE_DMABUF_RENDERER=1
++export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS=1
++exec "$(dirname "$0")/qidi-studio-bin" "$@"
+diff --git a/src/slic3r/CMakeLists.txt b/src/slic3r/CMakeLists.txt
+index 61f7cf98..cbcc413d 100644
+--- a/src/slic3r/CMakeLists.txt
++++ b/src/slic3r/CMakeLists.txt
+@@ -756,7 +756,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+     FIND_LIBRARY(WAYLAND_EGL_LIBRARIES    NAMES wayland-egl)
+     FIND_LIBRARY(WAYLAND_CLIENT_LIBRARIES NAMES wayland-client)
+     find_package(CURL REQUIRED)
+-    target_link_libraries(libslic3r_gui ${DBUS_LIBRARIES} OSMesa)
++    target_link_libraries(libslic3r_gui ${DBUS_LIBRARIES})
+     target_link_libraries(libslic3r_gui
+         OpenGL::EGL
+         ${WAYLAND_SERVER_LIBRARIES}
+diff --git a/src/slic3r/GUI/Widgets/WebView.cpp b/src/slic3r/GUI/Widgets/WebView.cpp
+index bd416b5f..a1b892b5 100644
+--- a/src/slic3r/GUI/Widgets/WebView.cpp
++++ b/src/slic3r/GUI/Widgets/WebView.cpp
+@@ -397,29 +397,16 @@ bool WebView::RunScript(wxWebView *webView, wxString const &javascript)
+         return true;
+ #else
+         WebKitWebView *wkWebView = (WebKitWebView *) webView->GetNativeBackend();
++        if (wkWebView == nullptr)
++            return false;
+ #if defined(QDT_WEBKITGTK_4_1)
+         webkit_web_view_evaluate_javascript(
+             wkWebView, javascript.utf8_str(), -1, NULL, NULL, NULL,
+-            [](GObject *wkWebView, GAsyncResult *res, void *) {
+-                GError *error = NULL;
+-                JSCValue *result = webkit_web_view_evaluate_javascript_finish((WebKitWebView*)wkWebView, res, &error);
+-                if (!result) {
+-                    if (error) g_error_free(error);
+-                } else {
+-                    g_object_unref(result);
+-                }
+-        }, NULL);
++            NULL, NULL);
+ #else
+         webkit_web_view_run_javascript(
+             wkWebView, javascript.utf8_str(), NULL,
+-            [](GObject *wkWebView, GAsyncResult *res, void *) {
+-                GError * error = NULL;
+-                auto result = webkit_web_view_run_javascript_finish((WebKitWebView*)wkWebView, res, &error);
+-                if (!result)
+-                    g_error_free (error);
+-                else
+-                    webkit_javascript_result_unref (result);
+-        }, NULL);
++            NULL, NULL);
+ #endif
+         return true;
+ #endif
+diff --git a/src/slic3r/QIDI/QIDINetwork.cpp b/src/slic3r/QIDI/QIDINetwork.cpp
+new file mode 100644
+index 00000000..99f0943f
+--- /dev/null
++++ b/src/slic3r/QIDI/QIDINetwork.cpp
+@@ -0,0 +1,82 @@
++#include "QIDINetwork.hpp"
++
++namespace Slic3r {
++
++wxString QIDINetwork::get_maker_host() {
++    return wxString();
++}
++
++wxString QIDINetwork::get_qidi_host() {
++    return wxString();
++}
++
++std::string QIDINetwork::user_info(wxString& msg) {
++    return std::string();
++}
++
++bool QIDINetwork::get_device_list(wxString& msg) {
++    return false;
++}
++
++bool QIDINetwork::unbind(wxString& msg, const std::string& device_id) {
++    return false;
++}
++
++bool QIDINetwork::get_box_state(wxString& msg, const std::string& printer_url, const std::string& api_key) {
++    return false;
++}
++
++GUI::Box_info QIDINetwork::get_box_info(wxString& msg, const std::string& printer_url, const std::string& api_key) {
++    return GUI::Box_info();
++}
++
++void QIDINetwork::get_color_filament_str(wxString& msg, GUI::Box_info& filament_info, const std::string& printer_url, const std::string& api_key) {
++}
++
++void QIDINetwork::check_new_version(bool show_tips, int by_user) {
++}
++
++// MakerHttpHandle Implementation
++MakerHttpHandle& MakerHttpHandle::getInstance() {
++    static MakerHttpHandle instance;
++    return instance;
++}
++
++std::string MakerHttpHandle::get_maker_user_name() {
++    return std::string();
++}
++
++std::string MakerHttpHandle::refresh_token() {
++    return std::string();
++}
++
++std::string MakerHttpHandle::httpPostTask(const HttpData& data, bool& success) {
++    success = false;
++    return std::string();
++}
++
++void MakerHttpHandle::closeSSEClient() {
++}
++
++void MakerHttpHandle::setSSEHandle(std::function<void(const std::string&, const std::string&)> cb) {
++}
++
++bool MakerHttpHandle::get_maker_device_list() {
++    return false;
++}
++
++std::string MakerHttpHandle::getUploadUrl(const HttpData& data, bool& success) {
++    success = false;
++    return std::string();
++}
++
++std::string MakerHttpHandle::httpUploadTask(const HttpData& data, bool& success, std::function<void(Http::Progress, bool&)> progress_callback) {
++    success = false;
++    return std::string();
++}
++
++bool MakerHttpHandle::isSSEConnected() {
++    return false;
++}
++
++} // namespace Slic3r
+diff --git a/src/slic3r/QIDI/QIDINetwork.hpp b/src/slic3r/QIDI/QIDINetwork.hpp
+new file mode 100644
+index 00000000..cfa36404
+--- /dev/null
++++ b/src/slic3r/QIDI/QIDINetwork.hpp
+@@ -0,0 +1,53 @@
++#ifndef QIDI_NETWORK_HPP
++#define QIDI_NETWORK_HPP
++
++#include <string>
++#include <functional>
++#include <wx/string.h>
++#include "QIDINetworkTypes.hpp"
++#include "slic3r/Utils/Http.hpp"
++
++namespace Slic3r {
++
++class QIDINetwork {
++public:
++    QIDINetwork() = default;
++    ~QIDINetwork() = default;
++
++    wxString get_maker_host();
++    wxString get_qidi_host();
++    std::string user_info(wxString& msg);
++    bool get_device_list(wxString& msg);
++    bool unbind(wxString& msg, const std::string& device_id);
++
++    bool get_box_state(wxString& msg, const std::string& printer_url, const std::string& api_key);
++    GUI::Box_info get_box_info(wxString& msg, const std::string& printer_url, const std::string& api_key);
++    void get_color_filament_str(wxString& msg, GUI::Box_info& filament_info, const std::string& printer_url, const std::string& api_key);
++
++    void check_new_version(bool show_tips, int by_user);
++};
++
++class MakerHttpHandle {
++public:
++    static MakerHttpHandle& getInstance();
++
++    std::string get_maker_user_name();
++    std::string refresh_token();
++    std::string httpPostTask(const HttpData& data, bool& success);
++    void closeSSEClient();
++    void setSSEHandle(std::function<void(const std::string&, const std::string&)> cb);
++    bool get_maker_device_list();
++    std::string getUploadUrl(const HttpData& data, bool& success);
++    std::string httpUploadTask(const HttpData& data, bool& success, std::function<void(Http::Progress, bool&)> progress_callback);
++    bool isSSEConnected();
++
++private:
++    MakerHttpHandle() = default;
++    ~MakerHttpHandle() = default;
++    MakerHttpHandle(const MakerHttpHandle&) = delete;
++    MakerHttpHandle& operator=(const MakerHttpHandle&) = delete;
++};
++
++} // namespace Slic3r
++
++#endif // QIDI_NETWORK_HPP
+diff --git a/src/slic3r/QIDI/QIDINetworkTypes.hpp b/src/slic3r/QIDI/QIDINetworkTypes.hpp
+new file mode 100644
+index 00000000..661f35cc
+--- /dev/null
++++ b/src/slic3r/QIDI/QIDINetworkTypes.hpp
+@@ -0,0 +1,69 @@
++#ifndef QIDI_NETWORK_TYPES_HPP
++#define QIDI_NETWORK_TYPES_HPP
++
++#include <vector>
++#include <string>
++
++namespace Slic3r {
++
++enum Environment {
++    PRODUCTIONENV,
++    FOREIGNENV
++};
++
++enum TargetType {
++    PRINTERTYPE,
++    NONETYPE,
++    DEVICE
++};
++
++struct HttpData {
++    Environment env;
++    TargetType target;
++    std::string taskPath;
++    std::string body;
++};
++
++namespace GUI {
++
++struct Box_info {
++    int box_count = 0;
++    std::vector<int> slot_state;
++    std::vector<int> slot_id;
++    std::vector<std::string> filament_id;
++    std::vector<std::string> filament_colors;
++    std::vector<std::string> filament_type;
++    int auto_reload_detect = 0;
++
++    std::vector<int> filament_vendor;
++    std::vector<int> filament_index;
++};
++
++struct NetDevice {
++    std::string id;
++    std::string mac_address;
++    std::string local_ip;
++    std::string device_name;
++    std::string machine_type;
++    std::string link_url;
++    std::string url;
++    bool isSpecialMachine = false;
++};
++
++struct QIDIVersion {
++    std::string url;
++    std::string version_str;
++    std::string description;
++    bool force_upgrade = false;
++};
++
++} // namespace GUI
++
++// Make types accessible directly under Slic3r namespace
++using GUI::Box_info;
++using GUI::NetDevice;
++using GUI::QIDIVersion;
++
++} // namespace Slic3r
++
++#endif // QIDI_NETWORK_TYPES_HPP
+diff --git a/src/slic3r/QIDI/QIDISSEClientV2.cpp b/src/slic3r/QIDI/QIDISSEClientV2.cpp
+new file mode 100644
+index 00000000..10febfe8
+--- /dev/null
++++ b/src/slic3r/QIDI/QIDISSEClientV2.cpp
+@@ -0,0 +1,5 @@
++#include "QIDISSEClientV2.hpp"
++
++namespace Slic3r {
++// Stub
++} // namespace Slic3r
+diff --git a/src/slic3r/QIDI/QIDISSEClientV2.hpp b/src/slic3r/QIDI/QIDISSEClientV2.hpp
+new file mode 100644
+index 00000000..23f01e3e
+--- /dev/null
++++ b/src/slic3r/QIDI/QIDISSEClientV2.hpp
+@@ -0,0 +1,14 @@
++#ifndef QIDI_SSE_CLIENT_V2_HPP
++#define QIDI_SSE_CLIENT_V2_HPP
++
++namespace Slic3r {
++
++class QIDISSEClientV2 {
++public:
++    QIDISSEClientV2() = default;
++    ~QIDISSEClientV2() = default;
++};
++
++} // namespace Slic3r
++
++#endif // QIDI_SSE_CLIENT_V2_HPP
+diff --git a/src/slic3r/QIDI/UserPresetSyncManager.cpp b/src/slic3r/QIDI/UserPresetSyncManager.cpp
+new file mode 100644
+index 00000000..067e5ae8
+--- /dev/null
++++ b/src/slic3r/QIDI/UserPresetSyncManager.cpp
+@@ -0,0 +1,16 @@
++#include "UserPresetSyncManager.hpp"
++
++namespace Slic3r {
++
++UserPresetSyncManager& UserPresetSyncManager::instance() {
++    static UserPresetSyncManager instance;
++    return instance;
++}
++
++void UserPresetSyncManager::start(bool with_progress_dlg) {
++}
++
++void UserPresetSyncManager::stop() {
++}
++
++} // namespace Slic3r
+diff --git a/src/slic3r/QIDI/UserPresetSyncManager.hpp b/src/slic3r/QIDI/UserPresetSyncManager.hpp
+new file mode 100644
+index 00000000..845b9f22
+--- /dev/null
++++ b/src/slic3r/QIDI/UserPresetSyncManager.hpp
+@@ -0,0 +1,22 @@
++#ifndef USER_PRESET_SYNC_MANAGER_HPP
++#define USER_PRESET_SYNC_MANAGER_HPP
++
++namespace Slic3r {
++
++class UserPresetSyncManager {
++public:
++    static UserPresetSyncManager& instance();
++
++    void start(bool with_progress_dlg = false);
++    void stop();
++
++private:
++    UserPresetSyncManager() = default;
++    ~UserPresetSyncManager() = default;
++    UserPresetSyncManager(const UserPresetSyncManager&) = delete;
++    UserPresetSyncManager& operator=(const UserPresetSyncManager&) = delete;
++};
++
++} // namespace Slic3r
++
++#endif // USER_PRESET_SYNC_MANAGER_HPP
