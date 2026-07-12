@@ -57,7 +57,7 @@ else ()
         DOWNLOAD_DIR ${DEP_DOWNLOAD_DIR}/FFMPEG
         CONFIGURE_COMMAND ${_conf_cmd}
             ${_cross_cmd}
-            ${_pic_cmd}
+            --enable-pic
             ${_arch_cmd}
             ${_cc_cmd}
             --prefix="${DESTDIR}/usr/local"
