@@ -167,6 +167,10 @@ jobs:
         # Configure git system-wide to trust all directories
         git config --system safe.directory '*'
         
+        # Ensure correct directory permissions so non-root users can traverse and access the workspace
+        chmod a+rx /github /github/workspace || true
+        chmod -R a+rX .
+        
         # Create non-root build user
         useradd -m builduser
         echo "builduser ALL=(ALL) NOPASSWD: /usr/bin/pacman" > /etc/sudoers.d/builduser
