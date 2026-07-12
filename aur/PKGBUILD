@@ -1,0 +1,59 @@
+# Maintainer: Mitchell <mitchell@gemini.com>
+pkgname=qidistudio-git
+_pkgname=QIDIStudio
+pkgver=02.07.01.57.r16991.g4b23a908
+pkgrel=1
+pkgdesc="Professional 3D printer slicing software developed by QIDI Technology (built with CachyOS/Arch compatibility patches)"
+arch=('x86_64')
+url="https://github.com/mitch030504/QIDIStudioAutoBuild"
+license=('AGPL-3.0-only')
+depends=(
+    'gtk3'
+    'libsecret'
+    'mesa'
+    'glu'
+    'webkit2gtk-4.1'
+    'libxkbcommon'
+    'curl'
+    'libmspack'
+    'eglexternalplatform'
+    'gstreamer'
+    'gst-plugins-base-libs'
+    'tbb'
+)
+makedepends=(
+    'git'
+    'cmake'
+    'ninja'
+    'nasm'
+    'yasm'
+    'extra-cmake-modules'
+)
+provides=('qidistudio')
+conflicts=('qidistudio' 'qidi-studio')
+source=("git+https://github.com/mitch030504/QIDIStudioAutoBuild.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "${srcdir}/QIDIStudioAutoBuild"
+    printf "02.07.01.57.r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+prepare() {
+    cd "${srcdir}/QIDIStudioAutoBuild"
+    # Ensure build scripts are executable
+    chmod +x BuildLinux.sh
+}
+
+build() {
+    cd "${srcdir}/QIDIStudioAutoBuild"
+    # Run BuildLinux.sh to compile deps (-d) and slic3r (-s) in release mode
+    # -r skips RAM/disk size limit checks for containers
+    ./BuildLinux.sh -ds -r
+}
+
+package() {
+    cd "${srcdir}/QIDIStudioAutoBuild"
+    # Install files to target pkgdir
+    DESTDIR="${pkgdir}" cmake --install build
+}
