@@ -166,7 +166,7 @@ jobs:
     - name: Setup Arch Linux and build environment
       run: |
         pacman -Syu --noconfirm
-        pacman -S --needed --noconfirm sudo base-devel procps-ng
+        pacman -S --needed --noconfirm sudo base-devel procps-ng wayland wayland-protocols libxkbcommon
         
         # Configure git system-wide to trust all directories
         git config --system safe.directory '*'
