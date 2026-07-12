@@ -15,6 +15,18 @@ jobs:
         ref: 'main' 
         fetch-depth: 1
 
+    - name: Checkout AutoBuild Patches (Current Repo)
+      uses: actions/checkout@v4
+      with:
+        path: autobuild-patches
+
+    - name: Apply Linux Compatibility and Compilation Patches
+      run: |
+        echo "Applying patches to upstream QIDI Studio source..."
+        git apply --whitespace=fix autobuild-patches/patches/linux-build-fixes.patch
+        echo "Cleaning up patch files..."
+        rm -rf autobuild-patches
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
